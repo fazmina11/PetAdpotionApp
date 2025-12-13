@@ -40,6 +40,13 @@ const Signup = () => {
       return;
     }
 
+    // Phone validation
+    if (phone.length < 10) {
+      setError('Please enter a valid phone number');
+      setLoading(false);
+      return;
+    }
+
     const result = await signup(name, email, phone, password);
     
     if (result.success) {
