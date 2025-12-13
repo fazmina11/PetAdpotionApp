@@ -1,4 +1,5 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
+import { authAPI } from '../services/api';
 
 const AuthContext = createContext();
 
@@ -14,75 +15,58 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Check if user is already logged in (from localStorage)
   useEffect(() => {
-    const storedUser = JSON.parse(localStorage.getItem('user'));
-    if (storedUser) {
-      setUser(storedUser);
+    const storedUser = localStorage.getItem('user');
+    const storedToken = localStorage.getItem('token');
+    
+    if (storedUser && storedToken) {
+      setUser(JSON.parse(storedUser));
     }
     setLoading(false);
   }, []);
 
-  // Login function - will connect to backend API later
   const login = async (email, password) => {
     try {
-      // TODO: Replace with actual API call
-      // const response = await fetch('http://localhost:5000/api/auth/login', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({ email, password })
-      // });
-      // const data = await response.json();
-
-      // Temporary mock login for frontend testing
-      const mockUser = {
-        id: '1',
-        name: email.split('@')[0], // Use email prefix as name
-        email: email,
-        avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&h=100&fit=crop'
-      };
-
-      setUser(mockUser);
-      localStorage.setItem('user', JSON.stringify(mockUser));
-      return { success: true, user: mockUser };
+      const data = await authAPI.login(email, password);
+      
+      if (data.success) {
+        setUser(data.user);
+        localStorage.setItem('user', JSON.stringify(data.user));
+        localStorage.setItem('token', data.token);
+        
+        return { success: true, user: data.user };
+      } else {
+        return { success: false, error: data.message };
+      }
     } catch (error) {
       console.error('Login error:', error);
-      return { success: false, error: 'Login failed' };
+      return { success: false, error: error.message || 'Login failed' };
     }
   };
 
-  // Signup function - will connect to backend API later
-  const signup = async (name, email, password) => {
+  const signup = async (name, email, phone, password) => {
     try {
-      // TODO: Replace with actual API call
-      // const response = await fetch('http://localhost:5000/api/auth/signup', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({ name, email, password })
-      // });
-      // const data = await response.json();
-
-      // Temporary mock signup for frontend testing
-      const mockUser = {
-        id: Date.now().toString(),
-        name: name,
-        email: email,
-        avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&h=100&fit=crop'
-      };
-
-      setUser(mockUser);
-      localStorage.setItem('user', JSON.stringify(mockUser));
-      return { success: true, user: mockUser };
+      const data = await authAPI.signup(name, email, phone, password);
+      
+      if (data.success) {
+        setUser(data.user);
+        localStorage.setItem('user', JSON.stringify(data.user));
+        localStorage.setItem('token', data.token);
+        
+        return { success: true, user: data.user };
+      } else {
+        return { success: false, error: data.message };
+      }
     } catch (error) {
       console.error('Signup error:', error);
-      return { success: false, error: 'Signup failed' };
+      return { success: false, error: error.message || 'Signup failed' };
     }
   };
 
-  // Logout function
   const logout = () => {
     setUser(null);
     localStorage.removeItem('user');
+    localStorage.removeItem('token');
   };
 
   const value = {

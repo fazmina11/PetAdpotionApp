@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { X, Upload, Image as ImageIcon } from 'lucide-react';
+import { X, Upload } from 'lucide-react';
+import { petsAPI } from '../services/api';
 
-const AddPetModal = ({ isOpen, onClose }) => {
+const AddPetModal = ({ isOpen, onClose, onPetAdded }) => {
   const [formData, setFormData] = useState({
     name: '',
     category: 'dogs',
@@ -18,6 +19,7 @@ const AddPetModal = ({ isOpen, onClose }) => {
   const [imageFile, setImageFile] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
 
   const categories = [
     { value: 'dogs', label: 'Dogs', icon: '🐶' },
@@ -41,13 +43,11 @@ const AddPetModal = ({ isOpen, onClose }) => {
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
-      // Validate file type
       if (!file.type.startsWith('image/')) {
         setError('Please select an image file');
         return;
       }
 
-      // Validate file size (max 5MB)
       if (file.size > 5 * 1024 * 1024) {
         setError('Image size should be less than 5MB');
         return;
@@ -56,7 +56,6 @@ const AddPetModal = ({ isOpen, onClose }) => {
       setImageFile(file);
       setError('');
 
-      // Create preview
       const reader = new FileReader();
       reader.onloadend = () => {
         setImagePreview(reader.result);
@@ -68,6 +67,7 @@ const AddPetModal = ({ isOpen, onClose }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    setSuccess('');
     setLoading(true);
 
     // Validation
@@ -84,52 +84,37 @@ const AddPetModal = ({ isOpen, onClose }) => {
     }
 
     try {
-      // TODO: Replace with actual API call when backend is ready
-      // const formDataToSend = new FormData();
-      // formDataToSend.append('name', formData.name);
-      // formDataToSend.append('category', formData.category);
-      // formDataToSend.append('breed', formData.breed);
-      // formDataToSend.append('age', formData.age);
-      // formDataToSend.append('weight', formData.weight);
-      // formDataToSend.append('gender', formData.gender);
-      // formDataToSend.append('description', formData.description);
-      // formDataToSend.append('location', formData.location);
-      // formDataToSend.append('price', formData.price);
-      // formDataToSend.append('image', imageFile);
+      // Send real file to backend
+      const response = await petsAPI.addPet(formData, imageFile);
       
-      // const response = await fetch('http://localhost:5000/api/pets', {
-      //   method: 'POST',
-      //   body: formDataToSend,
-      //   headers: {
-      //     'Authorization': `Bearer ${localStorage.getItem('token')}`
-      //   }
-      // });
-      
-      // const data = await response.json();
-      
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      alert('Pet information submitted successfully! (This will save to database when backend is connected)');
+      setSuccess(response.message);
       
       // Reset form
-      setFormData({
-        name: '',
-        category: 'dogs',
-        breed: '',
-        age: '',
-        weight: '',
-        gender: '',
-        description: '',
-        location: '',
-        price: ''
-      });
-      setImagePreview(null);
-      setImageFile(null);
-      onClose();
+      setTimeout(() => {
+        setFormData({
+          name: '',
+          category: 'dogs',
+          breed: '',
+          age: '',
+          weight: '',
+          gender: '',
+          description: '',
+          location: '',
+          price: ''
+        });
+        setImagePreview(null);
+        setImageFile(null);
+        setSuccess('');
+        
+        if (onPetAdded) {
+          onPetAdded();
+        }
+        
+        onClose();
+      }, 2000);
       
     } catch (err) {
-      setError('Failed to submit pet information. Please try again.');
+      setError(err.message || 'Failed to submit pet information. Please try again.');
       console.error('Submit error:', err);
     } finally {
       setLoading(false);
@@ -141,7 +126,6 @@ const AddPetModal = ({ isOpen, onClose }) => {
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
       <div className="bg-white rounded-3xl max-w-4xl w-full my-8 shadow-2xl">
-        {/* Header */}
         <div className="flex justify-between items-center p-6 border-b border-gray-200">
           <div>
             <h2 className="text-3xl font-bold text-gray-900">Add Pet for Adoption</h2>
@@ -155,7 +139,6 @@ const AddPetModal = ({ isOpen, onClose }) => {
           </button>
         </div>
 
-        {/* Form */}
         <form onSubmit={handleSubmit} className="p-6">
           {error && (
             <div className="mb-6 bg-red-50 border-l-4 border-red-500 p-4 rounded">
@@ -163,8 +146,13 @@ const AddPetModal = ({ isOpen, onClose }) => {
             </div>
           )}
 
+          {success && (
+            <div className="mb-6 bg-green-50 border-l-4 border-green-500 p-4 rounded">
+              <p className="text-green-700">{success}</p>
+            </div>
+          )}
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Image Upload - Full Width */}
             <div className="md:col-span-2">
               <label className="block text-sm font-semibold text-gray-700 mb-2">
                 Pet Photo *
@@ -208,11 +196,8 @@ const AddPetModal = ({ isOpen, onClose }) => {
               </div>
             </div>
 
-            {/* Pet Name */}
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Pet Name *
-              </label>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Pet Name *</label>
               <input
                 type="text"
                 name="name"
@@ -224,11 +209,8 @@ const AddPetModal = ({ isOpen, onClose }) => {
               />
             </div>
 
-            {/* Category */}
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Category *
-              </label>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Category *</label>
               <select
                 name="category"
                 value={formData.category}
@@ -244,59 +226,47 @@ const AddPetModal = ({ isOpen, onClose }) => {
               </select>
             </div>
 
-            {/* Breed */}
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Breed *
-              </label>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Breed *</label>
               <input
                 type="text"
                 name="breed"
                 value={formData.breed}
                 onChange={handleInputChange}
-                placeholder="e.g., Golden Retriever, Persian"
+                placeholder="e.g., Golden Retriever"
                 className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-primary-500 focus:ring-2 focus:ring-primary-200 outline-none transition-all"
                 required
               />
             </div>
 
-            {/* Age */}
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Age *
-              </label>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Age *</label>
               <input
                 type="text"
                 name="age"
                 value={formData.age}
                 onChange={handleInputChange}
-                placeholder="e.g., 2 Years, 6 Months"
+                placeholder="e.g., 2 Years"
                 className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-primary-500 focus:ring-2 focus:ring-primary-200 outline-none transition-all"
                 required
               />
             </div>
 
-            {/* Weight */}
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Weight *
-              </label>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Weight *</label>
               <input
                 type="text"
                 name="weight"
                 value={formData.weight}
                 onChange={handleInputChange}
-                placeholder="e.g., 15 Kg, 5 lbs"
+                placeholder="e.g., 15 Kg"
                 className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-primary-500 focus:ring-2 focus:ring-primary-200 outline-none transition-all"
                 required
               />
             </div>
 
-            {/* Gender */}
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Gender *
-              </label>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Gender *</label>
               <select
                 name="gender"
                 value={formData.gender}
@@ -310,11 +280,8 @@ const AddPetModal = ({ isOpen, onClose }) => {
               </select>
             </div>
 
-            {/* Location */}
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Location
-              </label>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Location</label>
               <input
                 type="text"
                 name="location"
@@ -325,11 +292,8 @@ const AddPetModal = ({ isOpen, onClose }) => {
               />
             </div>
 
-            {/* Price */}
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Adoption Fee (Optional)
-              </label>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Adoption Fee</label>
               <input
                 type="number"
                 name="price"
@@ -340,23 +304,19 @@ const AddPetModal = ({ isOpen, onClose }) => {
               />
             </div>
 
-            {/* Description - Full Width */}
             <div className="md:col-span-2">
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Description
-              </label>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Description</label>
               <textarea
                 name="description"
                 value={formData.description}
                 onChange={handleInputChange}
-                placeholder="Tell us about this pet's personality, behavior, and any special needs..."
+                placeholder="Tell us about this pet..."
                 rows="4"
                 className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-primary-500 focus:ring-2 focus:ring-primary-200 outline-none transition-all resize-none"
               ></textarea>
             </div>
           </div>
 
-          {/* Submit Buttons */}
           <div className="flex gap-4 mt-8">
             <button
               type="button"
