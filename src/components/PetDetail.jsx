@@ -1,15 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Heart, MessageCircle, User, Mail, Phone as PhoneIcon, MapPin, Calendar } from 'lucide-react';
-import { petsAPI, favoritesAPI, adoptionAPI } from '../services/api';
+import { petsAPI, favoritesAPI } from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import AdoptionRequestModal from './AdoptionRequestModal';
 
 const PetDetail = () => {
   const [pet, setPet] = useState(null);
   const [isFavorite, setIsFavorite] = useState(false);
   const [showFullText, setShowFullText] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [adoptLoading, setAdoptLoading] = useState(false);
+  const [showAdoptionModal, setShowAdoptionModal] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
   
   const navigate = useNavigate();
   const { id } = useParams();
@@ -66,26 +68,42 @@ const PetDetail = () => {
     }
   };
 
-  const handleAdopt = async () => {
+  const handleAdoptClick = () => {
     if (!user) {
       alert('Please login to adopt pets');
       navigate('/login');
       return;
     }
 
-    setAdoptLoading(true);
-    try {
-      const response = await adoptionAPI.requestAdoption(
-        id,
-        `I'm interested in adopting ${pet?.name}`
-      );
-      alert(response.message);
-    } catch (error) {
-      console.error('Error requesting adoption:', error);
-      alert(error.message || 'Failed to submit adoption request');
-    } finally {
-      setAdoptLoading(false);
+    if (pet.status !== 'available') {
+      return;
     }
+
+    setShowAdoptionModal(true);
+  };
+
+  const handleAdoptionSuccess = (message) => {
+    setSuccessMessage(message);
+    fetchPet(); // Refresh pet data to update status
+    setTimeout(() => {
+      setSuccessMessage('');
+    }, 5000);
+  };
+
+  const getStatusBadge = (status) => {
+    const badges = {
+      available: { bg: 'bg-green-100', text: 'text-green-700', label: 'Available' },
+      pending: { bg: 'bg-yellow-100', text: 'text-yellow-700', label: 'Pending' },
+      adopted: { bg: 'bg-gray-100', text: 'text-gray-700', label: 'Adopted' }
+    };
+
+    const badge = badges[status] || badges.available;
+
+    return (
+      <span className={`px-4 py-2 ${badge.bg} ${badge.text} rounded-full text-sm font-semibold`}>
+        {badge.label}
+      </span>
+    );
   };
 
   if (loading) {
@@ -102,7 +120,7 @@ const PetDetail = () => {
   if (!pet) return null;
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-white pb-8">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="flex justify-between items-center p-6 border-b bg-white sticky top-0 z-10 shadow-sm">
@@ -127,6 +145,13 @@ const PetDetail = () => {
           </button>
         </div>
 
+        {/* Success Message */}
+        {successMessage && (
+          <div className="mx-6 mt-6 bg-green-50 border-l-4 border-green-500 p-4 rounded-lg">
+            <p className="text-green-700 font-semibold">{successMessage}</p>
+          </div>
+        )}
+
         <div className="grid lg:grid-cols-2 gap-8 p-6 lg:p-12">
           {/* Left: Image */}
           <div>
@@ -143,8 +168,7 @@ const PetDetail = () => {
                 <p className="text-2xl text-gray-600">{pet.breed}</p>
               </div>
               <div className="text-right">
-                <span className="text-4xl font-bold text-primary-600">${pet.price}</span>
-                <p className="text-sm text-gray-500 mt-1">Adoption Fee</p>
+                {getStatusBadge(pet.status)}
               </div>
             </div>
 
@@ -241,16 +265,23 @@ const PetDetail = () => {
                 <MessageCircle size={28} className="text-primary-600" />
               </button>
               <button 
-                onClick={handleAdopt}
-                disabled={adoptLoading || pet.status !== 'available'}
-                className="flex-1 py-5 bg-gradient-purple text-white rounded-2xl text-xl font-semibold hover:opacity-90 transition disabled:opacity-50 shadow-xl"
+                onClick={handleAdoptClick}
+                disabled={pet.status !== 'available'}
+                className="flex-1 py-5 bg-gradient-purple text-white rounded-2xl text-xl font-semibold hover:opacity-90 transition disabled:opacity-50 disabled:cursor-not-allowed shadow-xl"
               >
-                {adoptLoading ? 'Processing...' : pet.status === 'adopted' ? 'Already Adopted' : pet.status === 'pending' ? 'Pending' : 'Adopt Me'}
+                {pet.status === 'adopted' ? 'Already Adopted' : pet.status === 'pending' ? 'Adoption Pending' : 'Adopt Me'}
               </button>
             </div>
           </div>
         </div>
       </div>
+
+      <AdoptionRequestModal 
+        isOpen={showAdoptionModal}
+        onClose={() => setShowAdoptionModal(false)}
+        pet={pet}
+        onSuccess={handleAdoptionSuccess}
+      />
     </div>
   );
 };

@@ -190,20 +190,147 @@ export const favoritesAPI = {
 // ============================================
 
 export const adoptionAPI = {
-  requestAdoption: async (petId, message) => {
+  requestAdoption: async (adoptionData) => {
     const response = await fetch(`${API_URL}/adoptions`, {
       method: 'POST',
       headers: {
         ...getAuthHeaders(),
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ petId, message })
+      body: JSON.stringify(adoptionData)
     });
 
     const data = await response.json();
 
     if (!response.ok) {
       throw new Error(data.message || 'Failed to request adoption');
+    }
+
+    return data;
+  },
+
+  getMyRequests: async () => {
+    const response = await fetch(`${API_URL}/adoptions/my-requests`, {
+      headers: getAuthHeaders()
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.message || 'Failed to fetch requests');
+    }
+
+    return data;
+  },
+
+  getReceivedRequests: async () => {
+    const response = await fetch(`${API_URL}/adoptions/received`, {
+      headers: getAuthHeaders()
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.message || 'Failed to fetch requests');
+    }
+
+    return data;
+  },
+
+  updateStatus: async (adoptionId, status) => {
+    const response = await fetch(`${API_URL}/adoptions/${adoptionId}`, {
+      method: 'PUT',
+      headers: {
+        ...getAuthHeaders(),
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ status })
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.message || 'Failed to update status');
+    }
+
+    return data;
+  },
+
+  completeAdoption: async (adoptionId) => {
+    const response = await fetch(`${API_URL}/adoptions/${adoptionId}/complete`, {
+      method: 'PUT',
+      headers: getAuthHeaders()
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.message || 'Failed to complete adoption');
+    }
+
+    return data;
+  }
+};
+
+// ============================================
+// NOTIFICATION APIs
+// ============================================
+
+export const notificationAPI = {
+  getNotifications: async () => {
+    const response = await fetch(`${API_URL}/notifications`, {
+      headers: getAuthHeaders()
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.message || 'Failed to fetch notifications');
+    }
+
+    return data;
+  },
+
+  markAsRead: async (notificationId) => {
+    const response = await fetch(`${API_URL}/notifications/${notificationId}/read`, {
+      method: 'PUT',
+      headers: getAuthHeaders()
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.message || 'Failed to mark as read');
+    }
+
+    return data;
+  },
+
+  markAllAsRead: async () => {
+    const response = await fetch(`${API_URL}/notifications/read-all`, {
+      method: 'PUT',
+      headers: getAuthHeaders()
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.message || 'Failed to mark all as read');
+    }
+
+    return data;
+  },
+
+  deleteNotification: async (notificationId) => {
+    const response = await fetch(`${API_URL}/notifications/${notificationId}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders()
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.message || 'Failed to delete notification');
     }
 
     return data;

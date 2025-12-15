@@ -54,6 +54,22 @@ const PetCard = ({ pet, onToggleFavorite }) => {
     navigate(`/pet/${pet._id}`);
   };
 
+  const getStatusBadge = (status) => {
+    const badges = {
+      available: { bg: 'bg-green-500', label: 'Available' },
+      pending: { bg: 'bg-yellow-500', label: 'Pending' },
+      adopted: { bg: 'bg-gray-500', label: 'Adopted' }
+    };
+
+    const badge = badges[status] || badges.available;
+
+    return (
+      <span className={`absolute top-3 left-3 px-3 py-1 ${badge.bg} text-white rounded-full text-xs font-semibold shadow-lg`}>
+        {badge.label}
+      </span>
+    );
+  };
+
   return (
     <div 
       onClick={handleCardClick}
@@ -69,6 +85,7 @@ const PetCard = ({ pet, onToggleFavorite }) => {
           alt={pet.name}
           className="w-full h-full object-cover"
         />
+        {getStatusBadge(pet.status)}
         <button 
           onClick={handleFavoriteClick}
           disabled={loading}
@@ -118,7 +135,7 @@ const PetCard = ({ pet, onToggleFavorite }) => {
           <span className="px-2 py-1 bg-green-50 text-green-700 rounded-full">
             {pet.age}
           </span>
-          <span className="px-2 py-1 bg-purple-50 text-purple-700 rounded-full">
+          <span className="px-2 py-1 bg-purple-50 text-purple-700 rounded-full truncate">
             {pet.location}
           </span>
         </div>

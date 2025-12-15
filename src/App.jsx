@@ -7,6 +7,7 @@ import Login from './components/Login';
 import Signup from './components/Signup';
 import Home from './components/Home';
 import PetDetail from './components/PetDetail';
+import Notifications from './components/Notifications';
 
 function App() {
   return (
@@ -31,6 +32,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <PetDetail />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/notifications" 
+            element={
+              <ProtectedRoute>
+                <Notifications />
               </ProtectedRoute>
             } 
           />
