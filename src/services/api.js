@@ -191,6 +191,8 @@ export const favoritesAPI = {
 
 export const adoptionAPI = {
   requestAdoption: async (adoptionData) => {
+    console.log('API: Requesting adoption with data:', adoptionData);
+    
     const response = await fetch(`${API_URL}/adoptions`, {
       method: 'POST',
       headers: {
@@ -201,6 +203,7 @@ export const adoptionAPI = {
     });
 
     const data = await response.json();
+    console.log('API: Adoption request response:', data);
 
     if (!response.ok) {
       throw new Error(data.message || 'Failed to request adoption');
@@ -238,6 +241,8 @@ export const adoptionAPI = {
   },
 
   updateStatus: async (adoptionId, status) => {
+    console.log('API: Updating adoption status:', { adoptionId, status });
+    
     const response = await fetch(`${API_URL}/adoptions/${adoptionId}`, {
       method: 'PUT',
       headers: {
@@ -248,6 +253,7 @@ export const adoptionAPI = {
     });
 
     const data = await response.json();
+    console.log('API: Update status response:', data);
 
     if (!response.ok) {
       throw new Error(data.message || 'Failed to update status');
@@ -257,12 +263,15 @@ export const adoptionAPI = {
   },
 
   completeAdoption: async (adoptionId) => {
+    console.log('API: Completing adoption:', adoptionId);
+    
     const response = await fetch(`${API_URL}/adoptions/${adoptionId}/complete`, {
       method: 'PUT',
       headers: getAuthHeaders()
     });
 
     const data = await response.json();
+    console.log('API: Complete adoption response:', data);
 
     if (!response.ok) {
       throw new Error(data.message || 'Failed to complete adoption');

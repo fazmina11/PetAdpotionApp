@@ -46,43 +46,72 @@ const Notifications = () => {
   };
 
   const handleApprove = async (notificationId, adoptionId) => {
+    console.log('Approving adoption:', { notificationId, adoptionId });
+    
+    if (!adoptionId) {
+      alert('Adoption ID is missing. Please refresh and try again.');
+      return;
+    }
+
     setActionLoading(prev => ({ ...prev, [notificationId]: 'approving' }));
     try {
-      await adoptionAPI.updateStatus(adoptionId, 'approved');
+      const response = await adoptionAPI.updateStatus(adoptionId, 'approved');
+      console.log('Approve response:', response);
+      
       await notificationAPI.markAsRead(notificationId);
+      alert('Adoption request approved successfully! ✅');
       fetchNotifications();
     } catch (error) {
       console.error('Error approving:', error);
-      alert('Failed to approve adoption request');
+      alert(error.message || 'Failed to approve adoption request');
     } finally {
       setActionLoading(prev => ({ ...prev, [notificationId]: null }));
     }
   };
 
   const handleReject = async (notificationId, adoptionId) => {
+    console.log('Rejecting adoption:', { notificationId, adoptionId });
+    
+    if (!adoptionId) {
+      alert('Adoption ID is missing. Please refresh and try again.');
+      return;
+    }
+
     setActionLoading(prev => ({ ...prev, [notificationId]: 'rejecting' }));
     try {
-      await adoptionAPI.updateStatus(adoptionId, 'rejected');
+      const response = await adoptionAPI.updateStatus(adoptionId, 'rejected');
+      console.log('Reject response:', response);
+      
       await notificationAPI.markAsRead(notificationId);
+      alert('Adoption request rejected. ❌');
       fetchNotifications();
     } catch (error) {
       console.error('Error rejecting:', error);
-      alert('Failed to reject adoption request');
+      alert(error.message || 'Failed to reject adoption request');
     } finally {
       setActionLoading(prev => ({ ...prev, [notificationId]: null }));
     }
   };
 
   const handleComplete = async (notificationId, adoptionId) => {
+    console.log('Completing adoption:', { notificationId, adoptionId });
+    
+    if (!adoptionId) {
+      alert('Adoption ID is missing. Please refresh and try again.');
+      return;
+    }
+
     setActionLoading(prev => ({ ...prev, [notificationId]: 'completing' }));
     try {
-      await adoptionAPI.completeAdoption(adoptionId);
+      const response = await adoptionAPI.completeAdoption(adoptionId);
+      console.log('Complete response:', response);
+      
       await notificationAPI.markAsRead(notificationId);
-      fetchNotifications();
       alert('Adoption completed successfully! 🎉');
+      fetchNotifications();
     } catch (error) {
       console.error('Error completing adoption:', error);
-      alert('Failed to complete adoption');
+      alert(error.message || 'Failed to complete adoption');
     } finally {
       setActionLoading(prev => ({ ...prev, [notificationId]: null }));
     }
@@ -229,7 +258,7 @@ const Notifications = () => {
                     </div>
 
                     {/* Action Buttons */}
-                    {notification.actionRequired && notification.type === 'adoption_request' && (
+                    {notification.actionRequired && notification.type === 'adoption_request' && notification.adoption && (
                       <div className="flex gap-3 mt-4">
                         <button
                           onClick={() => handleApprove(notification._id, notification.adoption)}
@@ -268,7 +297,7 @@ const Notifications = () => {
                       </div>
                     )}
 
-                    {notification.actionRequired && notification.type === 'adoption_approved' && (
+                    {notification.actionRequired && notification.type === 'adoption_approved' && notification.adoption && (
                       <button
                         onClick={() => handleComplete(notification._id, notification.adoption)}
                         disabled={actionLoading[notification._id]}
