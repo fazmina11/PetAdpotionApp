@@ -24,6 +24,7 @@ const Notifications = () => {
   const fetchNotifications = async () => {
     try {
       const response = await notificationAPI.getNotifications();
+      console.log('Fetched notifications:', response.notifications);
       setNotifications(response.notifications || []);
       setUnreadCount(response.unreadCount || 0);
     } catch (error) {
@@ -288,6 +289,7 @@ const Notifications = () => {
           <div className="space-y-4">
             {notifications.map((notification) => {
               const adoptionId = notification.adoption?._id || notification.adoption;
+              const adopter = notification.adoption?.adopter;
               const isProcessing = processingIds.has(notification._id);
               const isPendingRequest = notification.type === 'adoption_request' && notification.actionRequired;
               const isApprovedRequest = notification.type === 'adoption_approved' && notification.actionRequired;
@@ -330,7 +332,7 @@ const Notifications = () => {
                       </div>
 
                       {/* Applicant Details for Adoption Requests */}
-                      {isPendingRequest && notification.adoption && (
+                      {isPendingRequest && adopter && (
                         <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl p-4 mb-3 border border-blue-200">
                           <h4 className="font-bold text-gray-900 mb-3 flex items-center gap-2">
                             <Heart size={16} className="text-blue-600 flex-shrink-0" />
@@ -339,28 +341,16 @@ const Notifications = () => {
                           <div className="space-y-2 text-sm">
                             <div className="flex items-start gap-2">
                               <span className="text-gray-600 font-medium min-w-24 flex-shrink-0">Name:</span>
-                              <span className="text-gray-900 font-semibold break-words">{notification.adoption.contactName || 'N/A'}</span>
+                              <span className="text-gray-900 font-semibold break-words">{adopter.name}</span>
                             </div>
                             <div className="flex items-start gap-2">
                               <span className="text-gray-600 font-medium min-w-24 flex-shrink-0">Email:</span>
-                              <span className="text-gray-900 break-all">{notification.adoption.contactEmail || 'N/A'}</span>
+                              <span className="text-gray-900 break-all">{adopter.email}</span>
                             </div>
                             <div className="flex items-start gap-2">
                               <span className="text-gray-600 font-medium min-w-24 flex-shrink-0">Phone:</span>
-                              <span className="text-gray-900 font-semibold">{notification.adoption.contactPhone || 'N/A'}</span>
+                              <span className="text-gray-900 font-semibold">{adopter.phone}</span>
                             </div>
-                            {notification.adoption.reason && (
-                              <div className="flex items-start gap-2 pt-2 border-t border-blue-200">
-                                <span className="text-gray-600 font-medium min-w-24 flex-shrink-0">Why:</span>
-                                <span className="text-gray-700 text-xs leading-relaxed">{notification.adoption.reason}</span>
-                              </div>
-                            )}
-                            {notification.adoption.experience && (
-                              <div className="flex items-start gap-2">
-                                <span className="text-gray-600 font-medium min-w-24 flex-shrink-0">Experience:</span>
-                                <span className="text-gray-700 text-xs leading-relaxed">{notification.adoption.experience}</span>
-                              </div>
-                            )}
                           </div>
                         </div>
                       )}

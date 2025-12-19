@@ -1,7 +1,7 @@
 // Real API Service - Connects to Backend
 // All functions handle errors properly and never leave UI hanging
 
-const API_URL = 'http://localhost:5000/api';
+const API_URL = import.meta.env.VITE_API_URL || 'https://pet-adoption-backend-4-vv26.onrender.com/api';
 
 // ============================================
 // Helper: Get Auth Headers with Token
