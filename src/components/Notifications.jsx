@@ -7,19 +7,25 @@ const Notifications = () => {
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [actionLoading, setActionLoading] = useState({});
+  const [processingIds, setProcessingIds] = useState(new Set());
   const navigate = useNavigate();
 
+  // Fetch notifications - only runs once on mount
   useEffect(() => {
     fetchNotifications();
+  }, []); // Empty dependency array - runs only once
+
+  // Auto-refresh every 30 seconds
+  useEffect(() => {
+    const interval = setInterval(fetchNotifications, 30000);
+    return () => clearInterval(interval);
   }, []);
 
   const fetchNotifications = async () => {
-    setLoading(true);
     try {
       const response = await notificationAPI.getNotifications();
-      setNotifications(response.notifications);
-      setUnreadCount(response.unreadCount);
+      setNotifications(response.notifications || []);
+      setUnreadCount(response.unreadCount || 0);
     } catch (error) {
       console.error('Error fetching notifications:', error);
     } finally {
@@ -30,7 +36,11 @@ const Notifications = () => {
   const handleMarkAsRead = async (notificationId) => {
     try {
       await notificationAPI.markAsRead(notificationId);
-      fetchNotifications();
+      // Update local state instead of refetching
+      setNotifications(prev =>
+        prev.map(n => n._id === notificationId ? { ...n, read: true } : n)
+      );
+      setUnreadCount(prev => Math.max(0, prev - 1));
     } catch (error) {
       console.error('Error marking as read:', error);
     }
@@ -39,90 +49,146 @@ const Notifications = () => {
   const handleMarkAllAsRead = async () => {
     try {
       await notificationAPI.markAllAsRead();
-      fetchNotifications();
+      setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+      setUnreadCount(0);
     } catch (error) {
       console.error('Error marking all as read:', error);
     }
   };
 
   const handleApprove = async (notificationId, adoptionId) => {
-    console.log('Approving adoption:', { notificationId, adoptionId });
-    
     if (!adoptionId) {
-      alert('Adoption ID is missing. Please refresh and try again.');
+      alert('Error: Adoption ID is missing');
       return;
     }
 
-    setActionLoading(prev => ({ ...prev, [notificationId]: 'approving' }));
+    // Add to processing set
+    setProcessingIds(prev => new Set(prev).add(notificationId));
+
     try {
-      const response = await adoptionAPI.updateStatus(adoptionId, 'approved');
-      console.log('Approve response:', response);
+      await adoptionAPI.updateStatus(adoptionId, 'approved');
       
-      await notificationAPI.markAsRead(notificationId);
-      alert('Adoption request approved successfully! ✅');
-      fetchNotifications();
+      // Update local state immediately
+      setNotifications(prev =>
+        prev.map(n => {
+          if (n._id === notificationId) {
+            return {
+              ...n,
+              type: 'adoption_approved',
+              message: 'You approved this adoption request',
+              actionRequired: false,
+              read: true
+            };
+          }
+          return n;
+        })
+      );
+      
+      alert('✅ Adoption approved successfully!');
     } catch (error) {
       console.error('Error approving:', error);
-      alert(error.message || 'Failed to approve adoption request');
+      alert('Error: ' + (error.message || 'Failed to approve'));
     } finally {
-      setActionLoading(prev => ({ ...prev, [notificationId]: null }));
+      // Remove from processing set
+      setProcessingIds(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(notificationId);
+        return newSet;
+      });
     }
   };
 
   const handleReject = async (notificationId, adoptionId) => {
-    console.log('Rejecting adoption:', { notificationId, adoptionId });
-    
     if (!adoptionId) {
-      alert('Adoption ID is missing. Please refresh and try again.');
+      alert('Error: Adoption ID is missing');
       return;
     }
 
-    setActionLoading(prev => ({ ...prev, [notificationId]: 'rejecting' }));
+    // Add to processing set
+    setProcessingIds(prev => new Set(prev).add(notificationId));
+
     try {
-      const response = await adoptionAPI.updateStatus(adoptionId, 'rejected');
-      console.log('Reject response:', response);
+      await adoptionAPI.updateStatus(adoptionId, 'rejected');
       
-      await notificationAPI.markAsRead(notificationId);
-      alert('Adoption request rejected. ❌');
-      fetchNotifications();
+      // Update local state immediately
+      setNotifications(prev =>
+        prev.map(n => {
+          if (n._id === notificationId) {
+            return {
+              ...n,
+              type: 'adoption_rejected',
+              message: 'You rejected this adoption request',
+              actionRequired: false,
+              read: true
+            };
+          }
+          return n;
+        })
+      );
+      
+      alert('❌ Adoption rejected successfully!');
     } catch (error) {
       console.error('Error rejecting:', error);
-      alert(error.message || 'Failed to reject adoption request');
+      alert('Error: ' + (error.message || 'Failed to reject'));
     } finally {
-      setActionLoading(prev => ({ ...prev, [notificationId]: null }));
+      // Remove from processing set
+      setProcessingIds(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(notificationId);
+        return newSet;
+      });
     }
   };
 
   const handleComplete = async (notificationId, adoptionId) => {
-    console.log('Completing adoption:', { notificationId, adoptionId });
-    
     if (!adoptionId) {
-      alert('Adoption ID is missing. Please refresh and try again.');
+      alert('Error: Adoption ID is missing');
       return;
     }
 
-    setActionLoading(prev => ({ ...prev, [notificationId]: 'completing' }));
+    // Add to processing set
+    setProcessingIds(prev => new Set(prev).add(notificationId));
+
     try {
-      const response = await adoptionAPI.completeAdoption(adoptionId);
-      console.log('Complete response:', response);
+      await adoptionAPI.completeAdoption(adoptionId);
       
-      await notificationAPI.markAsRead(notificationId);
-      alert('Adoption completed successfully! 🎉');
-      fetchNotifications();
+      // Update local state immediately
+      setNotifications(prev =>
+        prev.map(n => {
+          if (n._id === notificationId) {
+            return {
+              ...n,
+              type: 'adoption_completed',
+              message: 'Adoption completed successfully!',
+              actionRequired: false,
+              read: true
+            };
+          }
+          return n;
+        })
+      );
+      
+      alert('🎉 Adoption completed successfully!');
     } catch (error) {
       console.error('Error completing adoption:', error);
-      alert(error.message || 'Failed to complete adoption');
+      alert('Error: ' + (error.message || 'Failed to complete adoption'));
     } finally {
-      setActionLoading(prev => ({ ...prev, [notificationId]: null }));
+      // Remove from processing set
+      setProcessingIds(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(notificationId);
+        return newSet;
+      });
     }
   };
 
   const handleDelete = async (notificationId) => {
     try {
       await notificationAPI.deleteNotification(notificationId);
-      fetchNotifications();
+      setNotifications(prev => prev.filter(n => n._id !== notificationId));
     } catch (error) {
       console.error('Error deleting notification:', error);
+      alert('Failed to delete notification');
     }
   };
 
@@ -181,25 +247,25 @@ const Notifications = () => {
       {/* Header */}
       <div className="bg-white border-b shadow-sm sticky top-0 z-10">
         <div className="max-w-4xl mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-4">
             <button
               onClick={() => navigate('/home')}
-              className="w-12 h-12 bg-gray-100 rounded-xl flex items-center justify-center hover:bg-gray-200 transition"
+              className="w-12 h-12 bg-gray-100 rounded-xl flex items-center justify-center hover:bg-gray-200 transition flex-shrink-0"
             >
               <ArrowLeft size={24} className="text-gray-600" />
             </button>
             
-            <div className="flex-1 ml-4">
+            <div className="flex-1 min-w-0">
               <h1 className="text-2xl font-bold text-gray-900">Notifications</h1>
               {unreadCount > 0 && (
-                <p className="text-sm text-gray-600">{unreadCount} unread notification{unreadCount !== 1 ? 's' : ''}</p>
+                <p className="text-sm text-gray-600">{unreadCount} unread</p>
               )}
             </div>
 
             {unreadCount > 0 && (
               <button
                 onClick={handleMarkAllAsRead}
-                className="px-4 py-2 bg-primary-600 text-white rounded-xl font-semibold hover:bg-primary-700 transition text-sm"
+                className="px-4 py-2 bg-primary-600 text-white rounded-xl font-semibold hover:bg-primary-700 transition text-sm whitespace-nowrap flex-shrink-0"
               >
                 Mark all read
               </button>
@@ -216,128 +282,172 @@ const Notifications = () => {
               <Bell size={40} className="text-gray-400" />
             </div>
             <h2 className="text-2xl font-bold text-gray-900 mb-2">No Notifications</h2>
-            <p className="text-gray-600">You're all caught up! Check back later for new updates.</p>
+            <p className="text-gray-600">You're all caught up!</p>
           </div>
         ) : (
           <div className="space-y-4">
-            {notifications.map((notification) => (
-              <div
-                key={notification._id}
-                className={`bg-white rounded-3xl p-6 shadow-lg hover:shadow-xl transition-all ${
-                  !notification.read ? 'border-2 border-primary-300' : 'border-2 border-transparent'
-                }`}
-              >
-                <div className="flex gap-4">
-                  {/* Icon */}
-                  {getNotificationIcon(notification.type)}
+            {notifications.map((notification) => {
+              const adoptionId = notification.adoption?._id || notification.adoption;
+              const isProcessing = processingIds.has(notification._id);
+              const isPendingRequest = notification.type === 'adoption_request' && notification.actionRequired;
+              const isApprovedRequest = notification.type === 'adoption_approved' && notification.actionRequired;
+              
+              return (
+                <div
+                  key={notification._id}
+                  className={`bg-white rounded-3xl p-6 shadow-lg hover:shadow-xl transition-all ${
+                    !notification.read ? 'border-2 border-primary-300' : 'border-2 border-transparent'
+                  }`}
+                >
+                  <div className="flex gap-4">
+                    {/* Icon */}
+                    {getNotificationIcon(notification.type)}
 
-                  {/* Content */}
-                  <div className="flex-1 min-w-0">
-                    {/* Pet Image & Message */}
-                    <div className="flex gap-3 mb-3">
-                      {notification.pet?.image && (
-                        <img
-                          src={notification.pet.image}
-                          alt={notification.pet.name}
-                          className="w-16 h-16 rounded-xl object-cover flex-shrink-0 cursor-pointer hover:opacity-80 transition"
-                          onClick={() => navigate(`/pet/${notification.pet._id}`)}
-                        />
-                      )}
-                      <div className="flex-1">
-                        <p className="text-gray-900 font-semibold text-lg leading-tight mb-1">
-                          {notification.message}
-                        </p>
-                        <div className="flex items-center gap-2 text-sm text-gray-500">
-                          <Clock size={14} />
-                          <span>{getTimeAgo(notification.createdAt)}</span>
-                          {!notification.read && (
-                            <span className="w-2 h-2 bg-primary-600 rounded-full ml-1"></span>
-                          )}
+                    {/* Content */}
+                    <div className="flex-1 min-w-0">
+                      {/* Pet Image & Message */}
+                      <div className="flex gap-3 mb-3">
+                        {notification.pet?.image && (
+                          <img
+                            src={notification.pet.image}
+                            alt={notification.pet.name}
+                            className="w-16 h-16 rounded-xl object-cover flex-shrink-0 cursor-pointer hover:opacity-80 transition"
+                            onClick={() => navigate(`/pet/${notification.pet._id}`)}
+                          />
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <p className="text-gray-900 font-semibold text-lg leading-tight mb-1 break-words">
+                            {notification.message}
+                          </p>
+                          <div className="flex items-center gap-2 text-sm text-gray-500">
+                            <Clock size={14} />
+                            <span>{getTimeAgo(notification.createdAt)}</span>
+                            {!notification.read && (
+                              <span className="w-2 h-2 bg-primary-600 rounded-full ml-1 flex-shrink-0"></span>
+                            )}
+                          </div>
                         </div>
                       </div>
-                    </div>
 
-                    {/* Action Buttons */}
-                    {notification.actionRequired && notification.type === 'adoption_request' && notification.adoption && (
-                      <div className="flex gap-3 mt-4">
+                      {/* Applicant Details for Adoption Requests */}
+                      {isPendingRequest && notification.adoption && (
+                        <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl p-4 mb-3 border border-blue-200">
+                          <h4 className="font-bold text-gray-900 mb-3 flex items-center gap-2">
+                            <Heart size={16} className="text-blue-600 flex-shrink-0" />
+                            Applicant Details
+                          </h4>
+                          <div className="space-y-2 text-sm">
+                            <div className="flex items-start gap-2">
+                              <span className="text-gray-600 font-medium min-w-24 flex-shrink-0">Name:</span>
+                              <span className="text-gray-900 font-semibold break-words">{notification.adoption.contactName || 'N/A'}</span>
+                            </div>
+                            <div className="flex items-start gap-2">
+                              <span className="text-gray-600 font-medium min-w-24 flex-shrink-0">Email:</span>
+                              <span className="text-gray-900 break-all">{notification.adoption.contactEmail || 'N/A'}</span>
+                            </div>
+                            <div className="flex items-start gap-2">
+                              <span className="text-gray-600 font-medium min-w-24 flex-shrink-0">Phone:</span>
+                              <span className="text-gray-900 font-semibold">{notification.adoption.contactPhone || 'N/A'}</span>
+                            </div>
+                            {notification.adoption.reason && (
+                              <div className="flex items-start gap-2 pt-2 border-t border-blue-200">
+                                <span className="text-gray-600 font-medium min-w-24 flex-shrink-0">Why:</span>
+                                <span className="text-gray-700 text-xs leading-relaxed">{notification.adoption.reason}</span>
+                              </div>
+                            )}
+                            {notification.adoption.experience && (
+                              <div className="flex items-start gap-2">
+                                <span className="text-gray-600 font-medium min-w-24 flex-shrink-0">Experience:</span>
+                                <span className="text-gray-700 text-xs leading-relaxed">{notification.adoption.experience}</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Action Buttons - Only show for pending approval/rejection */}
+                      {isPendingRequest && (
+                        <div className="flex gap-3 mt-4">
+                          <button
+                            onClick={() => handleApprove(notification._id, adoptionId)}
+                            disabled={isProcessing}
+                            className="flex-1 py-3 bg-green-600 text-white rounded-xl font-semibold hover:bg-green-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                          >
+                            {isProcessing ? (
+                              <>
+                                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                <span>Approving...</span>
+                              </>
+                            ) : (
+                              <>
+                                <Check size={20} />
+                                <span>Approve</span>
+                              </>
+                            )}
+                          </button>
+                          <button
+                            onClick={() => handleReject(notification._id, adoptionId)}
+                            disabled={isProcessing}
+                            className="flex-1 py-3 bg-red-600 text-white rounded-xl font-semibold hover:bg-red-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                          >
+                            {isProcessing ? (
+                              <>
+                                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                <span>Rejecting...</span>
+                              </>
+                            ) : (
+                              <>
+                                <X size={20} />
+                                <span>Reject</span>
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      )}
+
+                      {/* Mark as Done Button - Only for approved adoptions */}
+                      {isApprovedRequest && adoptionId && (
                         <button
-                          onClick={() => handleApprove(notification._id, notification.adoption)}
-                          disabled={actionLoading[notification._id]}
-                          className="flex-1 py-3 bg-green-600 text-white rounded-xl font-semibold hover:bg-green-700 transition disabled:opacity-50 flex items-center justify-center gap-2"
+                          onClick={() => handleComplete(notification._id, adoptionId)}
+                          disabled={isProcessing}
+                          className="w-full py-3 bg-gradient-purple text-white rounded-xl font-semibold hover:opacity-90 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 mt-4"
                         >
-                          {actionLoading[notification._id] === 'approving' ? (
+                          {isProcessing ? (
                             <>
                               <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                              Approving...
+                              <span>Completing...</span>
                             </>
                           ) : (
                             <>
-                              <Check size={20} />
-                              Approve
+                              <CheckCircle2 size={20} />
+                              <span>Mark as Done</span>
                             </>
                           )}
-                        </button>
-                        <button
-                          onClick={() => handleReject(notification._id, notification.adoption)}
-                          disabled={actionLoading[notification._id]}
-                          className="flex-1 py-3 bg-red-600 text-white rounded-xl font-semibold hover:bg-red-700 transition disabled:opacity-50 flex items-center justify-center gap-2"
-                        >
-                          {actionLoading[notification._id] === 'rejecting' ? (
-                            <>
-                              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                              Rejecting...
-                            </>
-                          ) : (
-                            <>
-                              <X size={20} />
-                              Reject
-                            </>
-                          )}
-                        </button>
-                      </div>
-                    )}
-
-                    {notification.actionRequired && notification.type === 'adoption_approved' && notification.adoption && (
-                      <button
-                        onClick={() => handleComplete(notification._id, notification.adoption)}
-                        disabled={actionLoading[notification._id]}
-                        className="w-full py-3 bg-gradient-purple text-white rounded-xl font-semibold hover:opacity-90 transition disabled:opacity-50 flex items-center justify-center gap-2 mt-4"
-                      >
-                        {actionLoading[notification._id] === 'completing' ? (
-                          <>
-                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                            Completing...
-                          </>
-                        ) : (
-                          <>
-                            <CheckCircle2 size={20} />
-                            Mark as Done
-                          </>
-                        )}
-                      </button>
-                    )}
-
-                    {/* Mark as Read / Delete */}
-                    <div className="flex gap-2 mt-4">
-                      {!notification.read && (
-                        <button
-                          onClick={() => handleMarkAsRead(notification._id)}
-                          className="flex-1 py-2 bg-gray-100 text-gray-700 rounded-xl font-medium hover:bg-gray-200 transition text-sm"
-                        >
-                          Mark as read
                         </button>
                       )}
-                      <button
-                        onClick={() => handleDelete(notification._id)}
-                        className="flex-1 py-2 bg-red-50 text-red-600 rounded-xl font-medium hover:bg-red-100 transition text-sm"
-                      >
-                        Delete
-                      </button>
+
+                      {/* Bottom Action Buttons - Mark as read & Delete */}
+                      <div className="flex gap-2 mt-4">
+                        {!notification.read && (
+                          <button
+                            onClick={() => handleMarkAsRead(notification._id)}
+                            className="flex-1 py-2 bg-gray-100 text-gray-700 rounded-xl font-medium hover:bg-gray-200 transition text-sm"
+                          >
+                            Mark as read
+                          </button>
+                        )}
+                        <button
+                          onClick={() => handleDelete(notification._id)}
+                          className="flex-1 py-2 bg-red-50 text-red-600 rounded-xl font-medium hover:bg-red-100 transition text-sm"
+                        >
+                          Delete
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
